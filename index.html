@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Dino Coletor de Vogais</title>
+  <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
+  <style>
+    body { margin: 0; background: #000; }
+    canvas { display: block; margin: 0 auto; }
+  </style>
+</head>
+<body>
+
+<script>
+const vogais = ['A', 'E', 'I', 'O', 'U'];
+let vidas = 5;
+let pontos = 0;
+
+class CenaPrincipal extends Phaser.Scene {
+  constructor() {
+    super('CenaPrincipal');
+  }
+
+  preload() {
+    this.load.image('dino', 'https://labs.phaser.io/assets/sprites/phaser-dude.png');
+    this.load.image('chao', 'https://labs.phaser.io/assets/sprites/platform.png');
+    this.load.image('fundo', 'https://labs.phaser.io/assets/skies/space3.png'); // fundo bonito
+    this.load.audio('acerto', 'https://cdn.pixabay.com/download/audio/2022/03/15/audio_770d652e7f.mp3?filename=correct-2-46134.mp3');
+    this.load.audio('erro', 'https://cdn.pixabay.com/download/audio/2022/03/15/audio_8e3b2e1c77.mp3?filename=error-2-46134.mp3');
+  }
+
+  create() {
+    // Adiciona imagem de fundo
+    this.add.image(400, 300, 'fundo').setScale(1.5);
+
+    this.add.text(20, 20, 'Use ESPAÇO para pular', { font: '20px Arial', fill: '#ffffff' });
+
+    this.vidasText = this.add.text(20, 50, `Vidas: ${vidas}`, { font: '18px Arial', fill: '#ff4d4d' });
+    this.pontosText = this.add.text(20, 80, `Pontos: ${pontos}`, { font: '18px Arial', fill: '#00ff88' });
+
+    this.chao = this.physics.add.staticGroup();
+    this.chao.create(400, 580, 'chao').setScale(2).refreshBody();
+
+    this.dino = this.physics.add.sprite(100, 450, 'dino').setScale(1.2);
+    this.dino.setCollideWorldBounds(true);
+    this.physics.add.collider(this.dino, this.chao);
+
+    this.input.keyboard.on('keydown-SPACE', () => {
+      if (this.dino.body.touching.down) {
+        this.dino.setVelocityY(-400);
+      }
+    });
+
+    this.letras = this.physics.add.group();
+
+    this.time.addEvent({
+      delay: 1200,
+      callback: this.gerarLetra,
+      callbackScope: this,
+      loop: true
+    });
+
+    this.physics.add.overlap(this.dino, this.letras, this.coletarLetra, null, this);
+  }
+
+  gerarLetra() {
+    const letra = Phaser.Utils.Array.GetRandom('ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split(''));
+
+    const texto = this.add.text(800, Phaser.Math.Between(100, 400), letra, {
+      font: '40px Arial',
+      fill: '#ffffff',
+      backgroundColor: '#00000088',
+      padding: { x: 8, y: 4 }
+    });
+
+    this.physics.world.enable(texto);
+    texto.body.setVelocityX(-200);
+    texto.letra = letra;
+
+    this.letras.add(texto);
+  }
+
+  coletarLetra(dino, letraSprite) {
+    const letra = letraSprite.letra;
+    const isVogal = vogais.includes(letra);
+
+    if (isVogal) {
+      pontos += 10;
+      letraSprite.setTint(0x00ff00);
+      this.sound.play('acerto', { volume: 0.4 });
+    } else {
+      vidas -= 1;
+      letraSprite.setTint(0xff0000);
+      this.sound.play('erro', { volume: 0.4 });
+    }
+
+    this.vidasText.setText(`Vidas: ${vidas}`);
+    this.pontosText.setText(`Pontos: ${pontos}`);
+
+    this.time.delayedCall(200, () => {
+      letraSprite.destroy();
+    });
+
+    if (vidas <= 0) {
+      this.scene.pause();
+      this.add.text(300, 300, 'FIM DE JOGO', { font: '40px Arial', fill: '#ffffff' });
+    }
+  }
+
+  update() {
+    this.letras.children.iterate((letra) => {
+      if (letra.x < -50) {
+        letra.destroy();
+      }
+    });
+  }
+}
+
+const config = {
+  type: Phaser.AUTO,
+  width: 800,
+  height: 600,
+  physics: {
+    default: 'arcade',
+    arcade: { gravity: { y: 800 }, debug: false }
+  },
+  scene: CenaPrincipal
+};
+
+const jogo = new Phaser.Game(config);
+</script>
+</body>
+</html>
